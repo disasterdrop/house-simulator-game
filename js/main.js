@@ -195,19 +195,11 @@
         update: function () {
             if (cursors.left.isDown) {
                 game.camera.x -= 4;
-                if (game.camera.x > 0) {
-                    gamePlayMenu.x -= 4;
-                }
-                else {
-                    gamePlayMenu.x = 100;
-                }
             }
             else if (cursors.right.isDown) {
                 game.camera.x += 4;
-                if ((maxWidth - width) > game.camera.x) {
-                    gamePlayMenu.x = game.camera.x + 100;
-                }
             }
+            gamePlayMenu.x = game.camera.x + 100;
         },
         render: function () {
 
