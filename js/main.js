@@ -2,24 +2,31 @@
     "use strict";
 
     let width = 800,
-        maxWidth = 1200,
+        maxWidth = 1600,
         height = 600,
         gameSettings = {
             housePrice: 250000,
             buildingAreaPositions: [
-                {x: 64, y: 128},
-                {x: 256, y: 128},
-                {x: 512, y: 128},
-                {x: 800, y: 128},
-                {x: 1024, y: 128},
+                {x: 100, y: 192},
+                {x: 400, y: 192},
+                {x: 700, y: 192},
+                {x: 1000, y: 192},
+                {x: 1300, y: 192},
             ],
             currentWeek: 1,
             weeklyVisitors: 0,
             weatherStats: [
-                'sunshine',
-                'rain'
+                'sonnig',
+                'wolkig',
+                'bedeckt',
+                'leichter_regen',
+                'regen',
+                'starker_regen',
+                'sturm',
+                'gewitter',
+                'schneefall'
             ],
-            weather: 'sunshine'
+            weather: 'sonnig'
         },
         player = {
             money: 1000000,
@@ -32,8 +39,8 @@
         visitorsText;
 
     // Game Elements
-    let map,
-        gamePlayMenu;
+    let gamePlayMenu,
+        npc;
 
     // Inputs
     let cursors,
@@ -57,12 +64,18 @@
                 align: "left"
             });
 
-            game.load.image('grass', 'img/tiles/Retina/towerDefense_tile024.png');
-            game.load.image('buildingarea', 'img/tiles/Retina/towerDefense_tile029.png');
+            game.load.image('sky', 'img/sky.png');
+            game.load.image('grass', 'img/grass.png');
+            game.load.image('road', 'img/road.png');
+            game.load.image('buildingarea', 'img/buildingarea.png');
             game.load.image('house', 'img/house.png');
             game.load.image('menu', 'img/menu.png');
+
+            game.load.spritesheet('dude', 'img/npc-sprite.png', 80, 110);
+
             game.load.audio('play', 'assets/CastleTheme.mp3');
             game.load.audio('build_house', 'assets/mechanical-clonk.mp3');
+
         },
         create: function () {
             game.state.start('menu');
@@ -70,14 +83,14 @@
     };
     let menuState = {
         create: function () {
-            if (window.localStorage.getItem('player.name')) {
+            if (window.sessionStorage.getItem('player.name')) {
                 game.state.start('play');
             }
             else {
                 $('#startScreen').fadeIn('slow');
                 $('#startGameButton').click(function () {
                     if ($('#playerName').val() != "") {
-                        window.localStorage.setItem('player.name', $('#playerName').val());
+                        window.sessionStorage.setItem('player.name', $('#playerName').val());
                         $('#startScreen').hide();
 
                         game.state.start('play');
@@ -94,33 +107,42 @@
             let music = game.add.audio('play');
             let sounds = [music];
 
-            game.sound.setDecodedCallback(sounds, function() {
+            game.sound.setDecodedCallback(sounds, function () {
                 sounds.shift();
                 music.loopFull();
             }, this);
 
             cursors = game.input.keyboard.createCursorKeys();
-            map = game.add.tileSprite(0, 0, maxWidth, height, 'grass');
 
-            moneyText = game.add.text(10, 10, "Guthaben: " + player.money.toString() + " Euro", {
-                font: "20px Arial",
-                fill: "#00ff00",
-                align: "left"
-            });
-            visitorsText = game.add.text(10, 30, "Besucher: 0", {
-                font: "18px Arial",
-                fill: "#ffffff",
-                align: "left"
-            });
-            weekText = game.add.text(400, 10, "KW: " + gameSettings.currentWeek, {
-                font: "18px Arial",
-                fill: "#ffffff",
-                align: "left"
-            });
+            game.add.tileSprite(0, 0, maxWidth, height, 'sky');
+            game.add.tileSprite(0, 128, maxWidth, height, 'grass');
+
+            let roads = game.add.group();
+            let houses = game.add.group();
+
+            for (let count = 0; count <= maxWidth; count = count + 128) {
+                roads.create(count, 320, 'road');
+            }
+
+            npc = game.add.sprite(0, 265, 'dude');
+
+            game.physics.arcade.enable(npc);
+            //game.camera.follow(npc);
+
+            npc.animations.add('walk', [0, 1, 2], 10, true);
+            npc.body.velocity.setTo(150, 0);
+            npc.body.bounce.set(1);
+            npc.play('walk');
+            npc.body.collideWorldBounds = true;
+            npc.body.onWorldBounds = new Phaser.Signal();
+            npc.body.onWorldBounds.add(function (sprite) {
+                sprite.scale.x *= -1;
+                sprite.play('walk');
+            }, this);
 
             gameSettings.buildingAreaPositions.forEach(function (item) {
-                let ground = game.add.sprite(item.x, item.y, 'buildingarea');
-                ground.scale.setTo(0.5, 0.5);
+                let ground = houses.create(item.x, item.y, 'buildingarea');
+                ground.scale.setTo(1, 1);
 
                 ground.inputEnabled = true;
                 ground.events.onInputDown.add(function (sprite, pointer) {
@@ -132,7 +154,8 @@
 
                         moneyText.setText("Guthaben: " + player.money.toString() + " Euro");
 
-                        let house = game.add.sprite(sprite.x, sprite.y, 'house');
+                        let house = houses.create(sprite.x - 64, sprite.y - 128, 'house');
+
                         house.inputEnabled = true;
                         house.events.onInputDown.add(function (sprite, pointer) {
 
@@ -148,6 +171,22 @@
                         moneyText.fill = '#00ff00';
                     }
                 }, this);
+            });
+
+            moneyText = game.add.text(10, 10, "Guthaben: " + player.money.toString() + " Euro", {
+                font: "20px Arial",
+                fill: "#00ff00",
+                align: "left"
+            });
+            visitorsText = game.add.text(10, 30, "Besucher: 0", {
+                font: "18px Arial",
+                fill: "#ffffff",
+                align: "left"
+            });
+            weekText = game.add.text(400, 10, "KW: " + gameSettings.currentWeek, {
+                font: "18px Arial",
+                fill: "#ffffff",
+                align: "left"
             });
 
             gameLoops();
@@ -169,22 +208,9 @@
                     gamePlayMenu.x = game.camera.x + 100;
                 }
             }
-
-            /*
-            if (this.game.input.activePointer.isDown) {
-                if (this.game.origDragPoint) {
-                    // move the camera by the amount the mouse has moved since last update
-                    this.game.camera.x += this.game.origDragPoint.x - this.game.input.activePointer.position.x;
-                }
-                // set new drag origin to current position
-                this.game.origDragPoint = this.game.input.activePointer.position.clone();
-            } else {
-                this.game.origDragPoint = null;
-            }
-            */
         },
         render: function () {
-            //game.debug.cameraInfo(game.camera, 32, 32);
+
         }
     };
     let winState = {};
@@ -230,6 +256,12 @@
             moneyText.setText("Guthaben: " + player.money.toString() + " Euro");
             visitorsText.setText("Besucher: " + gameSettings.weeklyVisitors + " in der Woche | " + dailyVisitors + " am Tag");
         });
+    }
+
+    function calculateWeather() {
+        if (gameSettings.weather === 'sonnig') {
+
+        }
     }
 
 })(jQuery, Phaser);
