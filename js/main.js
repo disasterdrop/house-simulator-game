@@ -183,10 +183,10 @@
                 fill: "#ffffff",
                 align: "left"
             });
-            weekText = game.add.text(400, 10, "KW: " + gameSettings.currentWeek, {
+            weekText = game.add.text(width - 100, 10, "KW: " + gameSettings.currentWeek, {
                 font: "18px Arial",
                 fill: "#ffffff",
-                align: "left"
+                align: "right"
             });
 
             gameLoops();
@@ -200,6 +200,9 @@
                 game.camera.x += 4;
             }
             gamePlayMenu.x = game.camera.x + 100;
+            moneyText.x = game.camera.x + 10;
+            visitorsText.x = game.camera.x + 10;
+            weekText.x = game.camera.x + (width - 100);
         },
         render: function () {
 
