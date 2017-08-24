@@ -1,0 +1,7 @@
+class House {
+
+    constructor() {
+
+    }
+
+}
