@@ -4,11 +4,13 @@
     let width = 800,
         height = 600,
         moneyText,
-        weekText,
-        visitorsText,
+        dayText,
         gamePlayMenu,
         player,
+        sky,
         roads,
+        grounds,
+        constructions,
         houses,
         cursors;
 
@@ -42,6 +44,7 @@
             phaser.load.image('grass', 'img/grass.png');
             phaser.load.image('road', 'img/road.png');
             phaser.load.image('buildingarea', 'img/buildingarea.png');
+            phaser.load.image('crane', 'img/crane.png');
             phaser.load.image('house', 'img/house.png');
             phaser.load.image('menu', 'img/menu.png');
             phaser.load.image('playerAvatar', 'img/avatar.png');
@@ -96,10 +99,12 @@
 
             cursors = phaser.input.keyboard.createCursorKeys();
 
-            phaser.add.tileSprite(0, 0, worldWidth, height, 'sky');
+            sky = phaser.add.tileSprite(0, 0, worldWidth, height, 'sky');
             phaser.add.tileSprite(0, 256, worldWidth, height, 'grass');
 
             roads = phaser.add.group();
+            grounds = phaser.add.group();
+            constructions = phaser.add.group();
             houses = phaser.add.group();
 
             for (let count = 0; count <= worldWidth; count = count + 128) {
@@ -117,7 +122,7 @@
             player.body.onWorldBounds = new Phaser.Signal();
 
             game.getBuildingAreas().forEach(function (item) {
-                let ground = houses.create(item.x, item.y, 'buildingarea');
+                let ground = grounds.create(item.x, item.y, 'buildingarea');
 
                 ground.scale.setTo(1, 1);
                 ground.inputEnabled = true;
@@ -127,43 +132,23 @@
 
                         game.getPlayer().buyHouse(game.getHousePrice());
 
-                        let house = houses.create(sprite.x - 64, sprite.y - 128, 'house');
                         let sound = phaser.add.audio('build_house');
+                        let construction = constructions.create(sprite.x, sprite.y, 'crane');
+                        let constructionTime = 10;
+                        let constructionTimeText = phaser.add.text(10, 10, constructionTime);
 
-                        house.inputEnabled = true;
+                        construction.constructionTime = constructionTime;
+                        construction.addChild(constructionTimeText);
+                        construction.inputEnabled = true;
                         sound.play();
                         changeText(moneyText, "Guthaben: " + game.getPlayer().getMoney() + " Euro");
-                    }
-
-                    // Change color of text
-                    if (game.getPlayer().getMoney() <= 0) {
-                        moneyText.fill = '#ff0000';
-                    } else {
-                        moneyText.fill = '#00ff00';
                     }
                 }, this);
             });
 
             createWeatherEffect();
-
-            moneyText = phaser.add.text(10, 10, "Guthaben: " + game.getPlayer().getMoney() + " Euro", {
-                font: "20px Arial",
-                fill: "#00ff00",
-                align: "left"
-            });
-            visitorsText = phaser.add.text(10, 30, "Besucher: 0", {
-                font: "18px Arial",
-                fill: "#ffffff",
-                align: "left"
-            });
-            weekText = phaser.add.text(width - 100, 10, "KW: " + game.getCurrentWeek(), {
-                font: "18px Arial",
-                fill: "#ffffff",
-                align: "right"
-            });
-
-            gameLoops();
             gamePlayMenuBar();
+            gameLoopTimer();
         },
         update: function () {
             phaser.scale.setShowAll();
@@ -201,9 +186,6 @@
             }
 
             gamePlayMenu.x = phaser.camera.x + 100;
-            moneyText.x = phaser.camera.x + 10;
-            visitorsText.x = phaser.camera.x + 10;
-            weekText.x = phaser.camera.x + (width - 100);
         }
     };
     let pauseState = {
@@ -229,27 +211,55 @@
         gamePlayMenu = phaser.add.sprite(100, height - 100, 'menu');
         let avatarImage = phaser.make.sprite(gamePlayMenu.width - 122, -((gamePlayMenu.height / 2) - 24), 'playerAvatar');
 
+        moneyText = phaser.add.text(10, 30, "Guthaben: " + game.getPlayer().getMoney() + " Euro", {
+            font: "20px Arial",
+            fill: "#00ff00",
+            align: "left"
+        });
+
+        dayText = phaser.add.text(10, 50, "Tag: 1, 14 Uhr", {
+            font: "20px Arial",
+            fill: "#fff",
+            align: "left"
+        });
+
         gamePlayMenu.addChild(avatarImage);
+        gamePlayMenu.addChild(moneyText);
+        gamePlayMenu.addChild(dayText);
     }
 
     /**
      *
      */
-    function gameLoops() {
-        phaser.time.events.loop(Phaser.Timer.SECOND * 14, function () {
-            game.jumpToNextWeek();
-
-            changeText(moneyText, "Guthaben: " + game.getPlayer().getMoney() + " Euro");
-            changeText(visitorsText, "Besucher: " + 0);
-            changeText(weekText, "KW: " + game.getCurrentWeek());
-        }, this);
-
+    function gameLoopTimer() {
         phaser.time.events.loop(Phaser.Timer.SECOND * 2, function () {
-            let dailyVisitors = game.calculateDailyVisitors();
-            game.collectDailyEarnings(dailyVisitors);
+            game.toNextHour();
 
+            constructions.forEach(function (item) {
+                if (item.constructionTime > 1) {
+                    item.constructionTime = item.constructionTime - 1;
+                    item.getChildAt(0).setText(item.constructionTime);
+                }
+                else {
+                    let house = houses.create(item.x - 64, item.y - 128, 'house');
+                    let sound = phaser.add.audio('build_house');
+                    sound.play();
+                    house.inputEnabled = true;
+                    item.destroy();
+                }
+            });
+
+            sky.tint = game.getDayTimeBackgroundColor();
+
+            changeText(dayText, "Tag: " + game.getCurrentDay() + ', ' + game.getDayTime() + ' Uhr');
             changeText(moneyText, "Guthaben: " + game.getPlayer().getMoney() + " Euro");
-            changeText(visitorsText, "Besucher: " + game.getWeeklyVisitors() + " in der Woche | " + dailyVisitors + " am Tag");
+
+            // Change color of text
+            if (game.getPlayer().getMoney() <= 0) {
+                moneyText.fill = '#ff0000';
+            } else {
+                moneyText.fill = '#00ff00';
+            }
         });
     }
 
@@ -378,6 +388,11 @@
         particle.body.velocity.x = max - Math.floor(Math.random() * 30);
     }
 
+    /**
+     *
+     * @param textElement
+     * @param newText
+     */
     function changeText(textElement, newText) {
         textElement.setText(newText);
     }

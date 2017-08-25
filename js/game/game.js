@@ -2,7 +2,6 @@ class Game {
 
     constructor(player) {
         this.player = player;
-        this.currentWeek = 1;
         this.totalVisitors = 0;
         this.weeklyVisitors = 0;
         this.worldWidth = 1600;
@@ -18,6 +17,10 @@ class Game {
         this.buildingAreas = [];
         this.weather = 'sun';
         this.housePrice = 250000;
+
+        this.currentWeek = 1;
+        this.currentDay = 1;
+        this.dayTime = 14;
     }
 
     levelUp() {
@@ -59,23 +62,46 @@ class Game {
         this.weather = weather;
     }
 
-    jumpToNextWeek() {
-        this.player.collectWeeklyHouseEarnings();
-        this.weeklyVisitors = 0;
-        this.currentWeek++;
+    getDayTime() {
+        return this.dayTime;
+    }
+
+    toNextHour() {
+        if (this.dayTime < 24) {
+            this.dayTime++;
+        }
+        else {
+            this.toNextDay();
+            this.dayTime = 1;
+        }
+    }
+
+    getCurrentDay() {
+        return this.currentDay;
+    }
+
+    toNextDay() {
+        this.player.collectDailyEarnings();
+        this.addVisitorsToWeeklyVisitors(this.player.getDailyVisitors());
+        this.currentDay++;
+
+        if (this.currentDay % 7 === 0) {
+            this.toNextWeek();
+        }
     }
 
     getCurrentWeek() {
         return this.currentWeek;
     }
 
-    getWeeklyVisitors() {
-        return this.weeklyVisitors;
+    toNextWeek() {
+        this.player.collectWeeklyHouseEarnings();
+        this.weeklyVisitors = 0;
+        this.currentWeek++;
     }
 
-    collectDailyEarnings(dailyVisitors) {
-        this.getPlayer().collectDailyEarnings(dailyVisitors);
-        this.addVisitorsToWeeklyVisitors(dailyVisitors)
+    getWeeklyVisitors() {
+        return this.weeklyVisitors;
     }
 
     addVisitorsToWeeklyVisitors(dailyVisitors) {
@@ -83,12 +109,19 @@ class Game {
         this.totalVisitors += dailyVisitors;
     }
 
-    calculateDailyVisitors() {
-        let min = 0;
-        let max = this.player.getOwnedHouses() * 50;
-        let dailyVisitors = Math.floor(Math.random() * (Math.floor(max) - Math.ceil(min))) + Math.ceil(min);
+    getDayTimeBackgroundColor() {
+        let tint = 0x0ffffff;
 
-        return dailyVisitors;
+        if (this.dayTime == 5 || this.dayTime == 20) {
+            tint = 0xff0000;
+        }
+        else {
+            if (this.dayTime > 20 || this.dayTime < 5) {
+                tint = 0x000000;
+            }
+        }
+
+        return tint;
     }
 
 }
